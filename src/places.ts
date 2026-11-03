@@ -12,6 +12,6 @@ export const PLACES: Record<string, RecruitPlace> = {
   },
   oji: {
     label: '王子駅周辺',
-    jimoty: { city: '北区', town: '堀船', line: 'JR京浜東北線', station: '王子', activityPlace: '東京都北区堀船' },
+    jimoty: { city: '北区', town: '滝野川', line: 'JR京浜東北線', station: '王子', activityPlace: '東京都北区滝野川' },
   },
 };
