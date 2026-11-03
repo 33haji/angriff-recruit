@@ -89,7 +89,7 @@ async function main() {
   fs.mkdirSync(OUT_DIR, { recursive: true });
   fs.writeFileSync(path.join(OUT_DIR, 'results.json'), JSON.stringify({ request: req, results }, null, 2));
 
-  if (!dryRun) await reportToGas(req, results);
+  await reportToGas(req, results, dryRun);
   if (results.some(r => !r.ok)) process.exit(1);
 }
 

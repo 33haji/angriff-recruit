@@ -5,7 +5,7 @@ import type { RecruitRequest, SiteResult } from './types.js';
  * GAS 側の doPost が body.recruit_result を見て practices シートを更新し、管理者に LINE 通知する。
  * URL が未設定（ローカル実行）のときは何もしない。
  */
-export async function reportToGas(req: RecruitRequest, results: SiteResult[]): Promise<void> {
+export async function reportToGas(req: RecruitRequest, results: SiteResult[], dryRun = false): Promise<void> {
   const url = process.env.GAS_WEBAPP_URL;
   const secret = process.env.RECRUIT_CALLBACK_SECRET;
   if (!url || !secret) {
@@ -17,6 +17,7 @@ export async function reportToGas(req: RecruitRequest, results: SiteResult[]): P
       secret,
       action: req.action,
       practice_id: req.practice_id,
+      dry_run: dryRun, // GAS 側はシートを更新せず通知だけ行う
       run_url: process.env.GITHUB_SERVER_URL && process.env.GITHUB_RUN_ID
         ? `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`
         : undefined,
