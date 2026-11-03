@@ -25,13 +25,15 @@ export type SiteId = 'jimoty' | 'sportsyaroyo' | 'circlebook';
 export interface RecruitPlace {
   /** 本文・スポやろ等に載せる公開表記（例: 四ツ谷駅周辺） */
   label: string;
-  /** ジモティーの「地域」選択に使う */
+  /** ジモティーの「地域」選択に使う。選択肢の表示名で指定する（ID はスクリプト側で解決） */
   jimoty: {
-    /** 市区郡町村（例: 新宿区） */
+    /** 市区郡（例: 新宿区） */
     city: string;
-    /** 町名（例: 四谷） */
-    town: string;
-    /** 最寄駅（例: 四ツ谷駅） */
+    /** 区町村（例: 四谷）。任意 */
+    town?: string;
+    /** 路線（例: JR中央線(快速)）。選択肢の表示名と完全一致させる */
+    line: string;
+    /** 駅（例: 四ツ谷） */
     station: string;
     /** 活動場所（例: 東京都新宿区四谷） */
     activityPlace: string;

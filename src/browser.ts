@@ -14,7 +14,11 @@ export interface Session {
 /** 共通のブラウザ起動。HEADFUL=1 でローカル確認用に画面を出す */
 export async function openBrowser(): Promise<Session> {
   fs.mkdirSync(OUT_DIR, { recursive: true });
-  const browser = await chromium.launch({ headless: !process.env.HEADFUL, slowMo: process.env.HEADFUL ? 150 : 0 });
+  const browser = await chromium.launch({
+    headless: !process.env.HEADFUL,
+    slowMo: process.env.HEADFUL ? 150 : 0,
+    executablePath: process.env.CHROMIUM_PATH || undefined, // 既存の Chromium を使いたいときだけ
+  });
   const context = await browser.newContext({
     locale: 'ja-JP',
     timezoneId: 'Asia/Tokyo',
