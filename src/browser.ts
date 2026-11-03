@@ -33,9 +33,16 @@ export async function openBrowser(): Promise<Session> {
 
 /** 失敗時のスクリーンショット。パスを返す */
 export async function snap(page: Page, name: string): Promise<string> {
-  const file = path.join(OUT_DIR, `${name}-${Date.now()}.png`);
-  await page.screenshot({ path: file, fullPage: true }).catch(() => {});
-  return file;
+  const base = path.join(OUT_DIR, `${name}-${Date.now()}`);
+  await page.screenshot({ path: `${base}.png`, fullPage: true }).catch(() => {});
+  // Actions のログだけで原因が追えるよう、URL・タイトル・本文の先頭をログに出し、HTML も保存する
+  try {
+    const html = await page.content();
+    fs.writeFileSync(`${base}.html`, html);
+    const text = (await page.locator('body').innerText().catch(() => '')).replace(/\s+/g, ' ').slice(0, 600);
+    console.log(`[${name}] url=${page.url()} title=${await page.title()}\n[${name}] body: ${text}`);
+  } catch { /* ignore */ }
+  return `${base}.png`;
 }
 
 export function env(name: string): string {

@@ -26,12 +26,27 @@ const CATEGORY_SPORTS = '67';
 const GENRE_VOLLEYBALL = '199';
 
 async function login(page: Page) {
-  await page.goto(`${BASE}/users/sign_in`);
-  await page.locator('#user_email, input[name="user[email]"]').first().fill(env('JMTY_EMAIL'));
-  await page.locator('#user_password, input[name="user[password]"]').first().fill(env('JMTY_PASSWORD'));
-  await page.locator('input[type=submit][value="ログイン"], button:has-text("ログイン")').first().click();
-  await page.waitForLoadState('networkidle');
-  if (page.url().includes('/users/sign_in')) throw new Error('ジモティーにログインできませんでした（メール／パスワードを確認）');
+  await page.goto(`${BASE}/users/sign_in`, { waitUntil: 'domcontentloaded' });
+  // フォームの name/id に依存せず、「メールアドレスでログイン」側の email / password 入力欄を探す
+  const email = page.locator('input[type="email"], input[name*="email" i], input[placeholder*="@"]').first();
+  const password = page.locator('input[type="password"]').first();
+  await email.waitFor({ timeout: 20_000 }).catch(async () => {
+    const forms = await page.locator('form').evaluateAll(fs => fs.map(f => (f as HTMLFormElement).action + ' :: ' + [...f.querySelectorAll('input')].map(i => `${i.type}/${i.name}`).join(',')));
+    throw new Error(`ログインフォームが見つかりません url=${page.url()} forms=${JSON.stringify(forms).slice(0, 500)}`);
+  });
+  await email.fill(env('JMTY_EMAIL'));
+  await password.fill(env('JMTY_PASSWORD'));
+  // password 欄と同じ form の送信ボタンを押す（d アカウント／Google 等の別ボタンを避ける）
+  const form = password.locator('xpath=ancestor::form[1]');
+  await Promise.all([
+    page.waitForURL(u => !u.pathname.includes('/users/sign_in'), { timeout: 30_000 }).catch(() => {}),
+    form.locator('input[type=submit], button[type=submit], button:has-text("ログイン")').first().click(),
+  ]);
+  await page.waitForLoadState('domcontentloaded');
+  if (page.url().includes('/users/sign_in')) {
+    const msg = await page.locator('.alert, .error, [class*="flash"]').first().textContent().catch(() => '');
+    throw new Error(`ジモティーにログインできませんでした（メール／パスワードを確認）${msg ? ': ' + msg.trim() : ''}`);
+  }
 }
 
 /** <select> を表示名で選ぶ。選択肢が動的に増えるので、候補が出るまで待つ */
@@ -119,12 +134,12 @@ export async function close(req: RecruitRequest): Promise<SiteResult> {
     const key = articleKey(url);
     await login(page);
     await page.goto(`${BASE}/my/posts`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('table, tr.list, .no-posts, body', { timeout: 20_000 });
     const row = page.locator(`#tr_refe_${key}`);
     if (!(await row.count())) {
       // 受付中の一覧に無い → すでに受付終了済みなら成功扱い
       await page.goto(`${BASE}/my/closed_posts`);
-      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('table, tr.list, .no-posts, body', { timeout: 20_000 });
       if (await page.locator(`#tr_refe_${key}`).count()) return { site: 'jimoty', ok: true, url, error: 'すでに受付終了でした' };
       throw new Error(`マイページに投稿 ${key} が見つかりません`);
     }
