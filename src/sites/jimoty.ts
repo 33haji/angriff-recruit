@@ -49,6 +49,20 @@ async function login(page: Page) {
   }
 }
 
+/** 案内ポップアップ・半透明の幕が出ていれば閉じる */
+async function dismissOverlays(page: Page) {
+  const modal = page.locator('.inquiry-condition-explain-modal:visible');
+  if (await modal.count()) {
+    await modal.locator('.js-modal-close').first().click().catch(() => {});
+  }
+  // それでも幕が残っていれば非表示にする
+  await page.evaluate(() => {
+    document.querySelectorAll('#alpha_screen, .inquiry-condition-explain-modal').forEach(el => {
+      (el as HTMLElement).style.display = 'none';
+    });
+  });
+}
+
 /** <select> を表示名で選ぶ。選択肢が動的に増えるので、候補が出るまで待つ */
 async function selectByLabel(page: Page, selector: string, label: string) {
   const sel = page.locator(selector);
@@ -65,8 +79,11 @@ export async function post(req: RecruitRequest, { dryRun }: { dryRun: boolean })
   const { page } = s;
   try {
     await login(page);
+    // 初回だけ出る「募集条件を設定すると〜」の案内（#alpha_screen が送信ボタンを覆う）を出さないための cookie
+    await s.context.addCookies([{ name: 'show_community_announce', value: 'show_community_announce', domain: 'jmty.jp', path: '/' }]);
     await page.goto(NEW_ARTICLE_URL);
     await page.waitForSelector('#article_title');
+    await dismissOverlays(page);
 
     // カテゴリ → ジャンル（ジャンルはカテゴリ選択後に動的に入る）
     await page.selectOption('#article_category_id', CATEGORY_SPORTS);
@@ -98,6 +115,11 @@ export async function post(req: RecruitRequest, { dryRun }: { dryRun: boolean })
     await page.check('#article_restrict_same_sex_false');
     await page.selectOption('#article_restrict_age_min', '20');
     await page.selectOption('#article_restrict_age_max', '35');
+
+    await dismissOverlays(page);
+    // 送信ボタンが実際に押せる状態か（何かに覆われていないか）を、押さずに確認する
+    await page.locator('#article_submit_button').click({ trial: true, timeout: 10_000 })
+      .catch(() => { throw new Error('投稿ボタンが押せない状態です（ポップアップ等に覆われている）'); });
 
     if (dryRun) {
       const shot = await snap(page, 'jimoty-dryrun');
