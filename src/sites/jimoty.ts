@@ -52,13 +52,12 @@ async function login(page: Page) {
 type JimotyArea = RecruitRequest['place']['jimoty'];
 
 async function readArea(page: Page) {
-  return page.evaluate(() => {
-    const t = (id: string) => (document.getElementById(id) as HTMLSelectElement | null)?.selectedOptions[0]?.text.trim() || '';
-    return {
-      city: t('article_city_id'), town: t('article_town_id'), line: t('article_line_id1'), station: t('article_station_master_id1'),
-      address: (document.getElementById('article_address') as HTMLInputElement).value,
-    };
-  });
+  // page.evaluate の中で名前付き関数を作ると tsx(esbuild) が __name() を差し込んでブラウザ側で落ちるので、配列で回す
+  const [city, town, line, station] = await page.evaluate(ids => ids.map(id =>
+    ((document.getElementById(id) as HTMLSelectElement | null)?.selectedOptions[0]?.text || '').trim()),
+    ['article_city_id', 'article_town_id', 'article_line_id1', 'article_station_master_id1']);
+  const address = await page.inputValue('#article_address');
+  return { city, town, line, station, address };
 }
 
 async function ensureArea(page: Page, j: JimotyArea) {
