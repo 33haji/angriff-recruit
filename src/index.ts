@@ -15,9 +15,10 @@ import { reportToGas } from './report.js';
 import { OUT_DIR } from './browser.js';
 import type { RecruitRequest, SiteId, SiteResult } from './types.js';
 import * as jimoty from './sites/jimoty.js';
+import * as sportsyaroyo from './sites/sportsyaroyo.js';
 
 type Site = { post(req: RecruitRequest, opts: { dryRun: boolean }): Promise<SiteResult>; close(req: RecruitRequest): Promise<SiteResult> };
-const SITES: Record<SiteId, Site | null> = { jimoty, sportsyaroyo: null, circlebook: null };
+const SITES: Record<SiteId, Site | null> = { jimoty, sportsyaroyo, circlebook: null };
 
 function parseArgs(argv: string[]): Record<string, string | boolean> {
   const out: Record<string, string | boolean> = {};
