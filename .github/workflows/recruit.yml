@@ -47,7 +47,7 @@ concurrency:
 jobs:
   run:
     # ジモティー等が GitHub ホストの IP（データセンター）を 403 でブロックするため、自宅 Mac の self-hosted runner で動かす
-    runs-on: [self-hosted, macOS]
+    runs-on: self-hosted
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
