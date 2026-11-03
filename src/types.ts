@@ -18,6 +18,8 @@ export interface RecruitRequest {
   sites?: SiteId[];
   /** close 時に使う既存の投稿URL */
   urls?: Partial<Record<SiteId, string>>;
+  /** true なら送信直前で止める（動作確認用） */
+  dry_run?: boolean;
 }
 
 export type SiteId = 'jimoty' | 'sportsyaroyo' | 'circlebook';

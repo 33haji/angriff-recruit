@@ -68,7 +68,7 @@ async function main() {
   }
 
   const req = requestFromArgs(cmd, a);
-  const dryRun = !!a['dry-run'];
+  const dryRun = !!a['dry-run'] || !!req.dry_run;
   const targets = (req.sites && req.sites.length ? req.sites : (Object.keys(SITES) as SiteId[])).filter(s => {
     if (!SITES[s]) { console.log(`[${s}] 未対応のためスキップ`); return false; }
     return true;
