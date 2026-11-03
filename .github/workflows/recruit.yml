@@ -1,0 +1,94 @@
+name: Recruit
+
+on:
+  # 運営アプリ（GAS）から: POST /repos/33haji/angriff-recruit/dispatches { event_type, client_payload }
+  repository_dispatch:
+    types: [recruit_post, recruit_close]
+  # 手動（GitHub アプリからも実行できる）
+  workflow_dispatch:
+    inputs:
+      action:
+        type: choice
+        options: [post, close]
+        default: post
+      date:
+        description: "練習日 YYYY-MM-DD"
+        required: false
+      start:
+        description: "開始 HH:MM"
+        default: "19:00"
+      end:
+        description: "終了 HH:MM"
+        default: "22:00"
+      fee:
+        description: "参加費（円）"
+        default: "500"
+      place:
+        type: choice
+        options: [yotsuya, oji]
+        default: yotsuya
+      site:
+        type: choice
+        description: "対象サイト（all = 全部）"
+        options: [all, jimoty, sportsyaroyo, circlebook]
+        default: all
+      url:
+        description: "close 時: 対象の投稿URL"
+        required: false
+      dry_run:
+        type: boolean
+        description: "送信直前で止めてスクショだけ残す"
+        default: false
+
+concurrency:
+  group: recruit
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+
+      - name: Run
+        env:
+          JMTY_EMAIL: ${{ secrets.JMTY_EMAIL }}
+          JMTY_PASSWORD: ${{ secrets.JMTY_PASSWORD }}
+          SPOYARO_EMAIL: ${{ secrets.SPOYARO_EMAIL }}
+          SPOYARO_PASSWORD: ${{ secrets.SPOYARO_PASSWORD }}
+          CIRCLEBOOK_EMAIL: ${{ secrets.CIRCLEBOOK_EMAIL }}
+          CIRCLEBOOK_PASSWORD: ${{ secrets.CIRCLEBOOK_PASSWORD }}
+          GAS_WEBAPP_URL: ${{ secrets.GAS_WEBAPP_URL }}
+          RECRUIT_CALLBACK_SECRET: ${{ secrets.RECRUIT_CALLBACK_SECRET }}
+          # repository_dispatch のときは client_payload をそのまま渡す（RecruitRequest 型）
+          RECRUIT_PAYLOAD: ${{ github.event_name == 'repository_dispatch' && toJSON(github.event.client_payload) || '' }}
+        run: |
+          set -e
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            case "${{ github.event.action }}" in
+              recruit_post)  npm run post ;;
+              recruit_close) npm run close ;;
+            esac
+          else
+            ARGS="--start ${{ inputs.start }} --end ${{ inputs.end }} --fee ${{ inputs.fee }} --place ${{ inputs.place }}"
+            [ -n "${{ inputs.date }}" ] && ARGS="$ARGS --date ${{ inputs.date }}"
+            [ "${{ inputs.site }}" != "all" ] && ARGS="$ARGS --site ${{ inputs.site }}"
+            [ -n "${{ inputs.url }}" ] && ARGS="$ARGS --url ${{ inputs.url }}"
+            [ "${{ inputs.dry_run }}" = "true" ] && ARGS="$ARGS --dry-run"
+            npm run ${{ inputs.action }} -- $ARGS
+          fi
+
+      - name: Upload screenshots / results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: recruit-out
+          path: out/
+          if-no-files-found: ignore

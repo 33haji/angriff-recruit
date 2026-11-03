@@ -1,0 +1,21 @@
+{
+  "name": "angriff-recruit",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Angriff（社会人バレーサークル）の助っ人募集を各掲示板に自動投稿する",
+  "type": "module",
+  "scripts": {
+    "post": "tsx src/index.ts post",
+    "close": "tsx src/index.ts close",
+    "preview": "tsx src/index.ts preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "playwright": "^1.49.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
