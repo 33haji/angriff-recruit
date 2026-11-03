@@ -31,6 +31,7 @@ HEADFUL=1 npm run post -- --date 2026-11-14 --start 18:30 --end 21:30 --place yo
 
 - `repository_dispatch`（`recruit_post` / `recruit_close`）: GAS から。`client_payload` は `src/types.ts` の `RecruitRequest`
 - `workflow_dispatch`: 手動。GitHub アプリ（スマホ）からも実行できる
+- 実行環境は **自宅 Mac の self-hosted runner**（GitHub ホストの IP はジモティーに 403 でブロックされるため）。Mac がスリープ中はジョブがキューで待つ
 
 ### Secrets
 

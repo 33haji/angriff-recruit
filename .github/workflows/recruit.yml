@@ -46,16 +46,17 @@ concurrency:
 
 jobs:
   run:
-    runs-on: ubuntu-latest
+    # ジモティー等が GitHub ホストの IP（データセンター）を 403 でブロックするため、自宅 Mac の self-hosted runner で動かす
+    runs-on: [self-hosted, macOS]
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      # Chromium は初回のみダウンロード（runner の ~/Library/Caches/ms-playwright に残る）
+      - run: npx playwright install chromium
 
       - name: Run
         env:
