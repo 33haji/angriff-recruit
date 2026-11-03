@@ -49,6 +49,36 @@ async function login(page: Page) {
   }
 }
 
+type JimotyArea = RecruitRequest['place']['jimoty'];
+
+async function readArea(page: Page) {
+  return page.evaluate(() => {
+    const t = (id: string) => (document.getElementById(id) as HTMLSelectElement | null)?.selectedOptions[0]?.text.trim() || '';
+    return {
+      city: t('article_city_id'), town: t('article_town_id'), line: t('article_line_id1'), station: t('article_station_master_id1'),
+      address: (document.getElementById('article_address') as HTMLInputElement).value,
+    };
+  });
+}
+
+async function ensureArea(page: Page, j: JimotyArea) {
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    await page.waitForTimeout(1500); // 非同期の書き換えが終わるのを待つ
+    const a = await readArea(page);
+    console.log(`[jimoty] area(${attempt}) ${JSON.stringify(a)}`);
+    const ok = a.city === j.city && a.line === j.line && a.station === j.station && (!j.town || a.town === j.town) && a.address === j.activityPlace;
+    if (ok) return;
+    if (a.city !== j.city) await selectByLabel(page, '#article_city_id', j.city);
+    if (j.town && a.town !== j.town) await selectByLabel(page, '#article_town_id', j.town);
+    if (a.line !== j.line) await selectByLabel(page, '#article_line_id1', j.line);
+    if (a.station !== j.station) await selectByLabel(page, '#article_station_master_id1', j.station);
+    await page.waitForTimeout(800);
+    await page.fill('#article_address', j.activityPlace);
+  }
+  const a = await readArea(page);
+  throw new Error(`地域・活動場所を指定どおりにできませんでした: ${JSON.stringify(a)}`);
+}
+
 /** 案内ポップアップ・半透明の幕が出ていれば閉じる */
 async function dismissOverlays(page: Page) {
   const modal = page.locator('.inquiry-condition-explain-modal:visible');
@@ -116,6 +146,9 @@ export async function post(req: RecruitRequest, { dryRun }: { dryRun: boolean })
     await page.selectOption('#article_restrict_age_min', '20');
     await page.selectOption('#article_restrict_age_max', '35');
 
+    // 地域・活動場所は、駅の選択などをきっかけにページ側の処理で後から上書きされることがあるので、送信直前に確認して入れ直す
+    await ensureArea(page, j);
+
     await dismissOverlays(page);
     // 送信ボタンが実際に押せる状態か（何かに覆われていないか）を、押さずに確認する
     await page.locator('#article_submit_button').click({ trial: true, timeout: 10_000 })
@@ -126,11 +159,13 @@ export async function post(req: RecruitRequest, { dryRun }: { dryRun: boolean })
       return { site: 'jimoty', ok: true, screenshot: shot, error: 'dry-run: 送信前で停止' };
     }
 
+    // 投稿後は「完了ページ」(/articles/complete?...&id=xxxx) か記事ページ (/article-xxxx) に遷移する
     await Promise.all([
-      page.waitForURL(/\/article-[a-z0-9]+/, { timeout: 60_000 }),
+      page.waitForURL(u => /\/articles\/complete/.test(u.pathname) || /\/article-[a-z0-9]+/.test(u.pathname), { timeout: 60_000 }),
       page.click('#article_submit_button'),
     ]);
-    const url = page.url().split('?')[0];
+    const url = articleUrlFrom(page.url());
+    if (!url) throw new Error(`投稿後のURLから記事を特定できません: ${page.url()}`);
     return { site: 'jimoty', ok: true, url };
   } catch (e) {
     const shot = await snap(page, 'jimoty-error');
@@ -138,6 +173,21 @@ export async function post(req: RecruitRequest, { dryRun }: { dryRun: boolean })
   } finally {
     await s.close();
   }
+}
+
+/**
+ * 投稿後のURL → 公開記事のURL
+ *   https://jmty.jp/articles/complete?category_group_name=com&category_name=spo&id=1sz9sh&prefecture_name=tokyo
+ *     → https://jmty.jp/tokyo/com-spo/article-1sz9sh
+ *   https://jmty.jp/tokyo/com-spo/article-1sz9sh?x=y → クエリを除いたもの
+ */
+export function articleUrlFrom(current: string): string | null {
+  const u = new URL(current);
+  if (/\/article-[a-z0-9]+/.test(u.pathname)) return `${u.origin}${u.pathname}`;
+  const q = u.searchParams;
+  const id = q.get('id');
+  if (!id) return null;
+  return `${BASE}/${q.get('prefecture_name') || 'tokyo'}/${q.get('category_group_name') || 'com'}-${q.get('category_name') || 'spo'}/article-${id}`;
 }
 
 /** URL から投稿キー（article-1sjw20 → 1sjw20）を取り出す */
