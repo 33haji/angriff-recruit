@@ -21,15 +21,29 @@ export function buildTitle(r: RecruitRequest): string {
   return `男女混合バレーの参加者募集！（${fmtWhen(r)}）`;
 }
 
-export function buildBody(r: RecruitRequest): string {
-  return `6人制男女混合バレーボールチームの"Angriff（アングリフ）"です！
+/** 本文のバリエーション。サイトによって冒頭・補足が少し違う */
+export interface BodyOptions {
+  /** 冒頭にチーム紹介を入れる（サークルブックはサークルページ内なので不要） */
+  intro?: boolean;
+  /** 【日程】に「場所はご連絡いただいた際にお教えします」を入れる */
+  placeOnRequest?: boolean;
+  /** 末尾に返信メールの注意書きを入れる（サークルブック） */
+  replyNote?: string;
+}
 
-以下の日程で練習があるのですが、人数を増やしたいので助っ人を募集中です🙋‍♂️
+export function buildBody(r: RecruitRequest, o: BodyOptions = { intro: true }): string {
+  const head = o.intro
+    ? `6人制男女混合バレーボールチームの"Angriff（アングリフ）"です！
+
+以下の日程で練習があるのですが、人数を増やしたいので助っ人を募集中です🙋‍♂️`
+    : `この日に練習があるのですが、人数が足りないので助っ人を募集中です🙋‍♂️`;
+  return `${head}
+
 参加希望の方は「募集条件」を必ず確認した上で「メッセージ内容」を添えてメッセージください！
 ※ チーム加入のメンバー募集ではなくあくまで単発の練習参加となりますので、他のチームに所属している方でもお気軽にご連絡ください
 
 【日程】
-・${fmtDate(r.date)}: ${r.start}-${r.end}
+・${fmtDate(r.date)}: ${r.start}-${r.end}${o.placeOnRequest ? '\n※ 場所はご連絡いただいた際にお教えします' : ''}
 ※ 参加費: ${r.fee}円
 
 【募集条件】
@@ -49,5 +63,13 @@ export function buildBody(r: RecruitRequest): string {
 ・氏名
 ・年齢
 ・性別
-・バレー歴（例：高校部活動3年）`;
+・バレー歴（例：高校部活動3年）${o.replyNote ? '\n' + o.replyNote : ''}
+
+何かわからないことや不安なことがありましたら、お気軽にご質問ください！`;
+}
+
+/** 改行区切りのテキスト → Trix 等のリッチテキスト用 HTML */
+export function toHtml(text: string): string {
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return `<div>${text.split('\n').map(esc).join('<br>')}</div>`;
 }
