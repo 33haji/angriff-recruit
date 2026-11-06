@@ -21,7 +21,7 @@ import type { RecruitRequest, SiteResult } from '../types.js';
 
 const BASE = 'https://jmty.jp';
 const NEW_ARTICLE_URL = `${BASE}/articles/new?category_group_id=6&prefecture_id=13`; // メンバー募集 / 東京都
-const IMAGES = ['1.jpg', '2.jpg', '3.jpg'].map(f => path.resolve('images', f));
+const IMAGES = ['1.jpg'].map(f => path.resolve('images', f));
 const CATEGORY_SPORTS = '67';
 const GENRE_VOLLEYBALL = '199';
 
@@ -132,7 +132,7 @@ export async function post(req: RecruitRequest, { dryRun }: { dryRun: boolean })
     await page.fill('#article_text', buildBody(req));
     await page.fill('#article_address', j.activityPlace);
 
-    // 画像3枚（非同期アップロード → hidden async_file[...] が3つ揃うまで待つ）
+    // 画像（非同期アップロード → hidden async_file[...] が枚数分そろうまで待つ）
     await page.setInputFiles('#upload_tag', IMAGES);
     await page.waitForFunction(
       n => document.querySelectorAll('input[type=hidden][name^="async_file["]').length >= n,
